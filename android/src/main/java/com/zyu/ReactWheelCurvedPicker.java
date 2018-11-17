@@ -1,15 +1,19 @@
 package com.zyu;
 
+import android.graphics.Camera;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.Region;
 import android.graphics.Shader;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 
 import com.aigestudio.wheelpicker.core.AbstractWheelPicker;
 import com.aigestudio.wheelpicker.view.WheelCurvedPicker;
+import com.aigestudio.wheelpicker.view.WheelStraightPicker;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
@@ -18,18 +22,30 @@ import com.facebook.react.uimanager.events.Event;
 import com.facebook.react.uimanager.events.EventDispatcher;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 
+import java.util.HashMap;
 import java.util.List;
 
 /**
  * @author <a href="mailto:lesliesam@hotmail.com"> Sam Yu </a>
  */
-public class ReactWheelCurvedPicker extends WheelCurvedPicker {
+public class ReactWheelCurvedPicker extends WheelStraightPicker {
+
+    private final HashMap<Integer, Integer> SPACE = new HashMap<>();
+    private final HashMap<Integer, Integer> DEPTH = new HashMap<>();
+
+    private final Camera camera = new Camera();
+    private final Matrix matrixRotate = new Matrix(), matrixDepth = new Matrix();
+
+    private int radius;
+    private int degreeSingleDelta;
+    private int degreeIndex, degreeUnitDelta;
 
     private final EventDispatcher mEventDispatcher;
     private List<Integer> mValueData;
 
     public ReactWheelCurvedPicker(ReactContext reactContext) {
         super(reactContext);
+
         mEventDispatcher = reactContext.getNativeModule(UIManagerModule.class).getEventDispatcher();
         setOnWheelChangeListener(new OnWheelChangeListener() {
             @Override
@@ -47,7 +63,22 @@ public class ReactWheelCurvedPicker extends WheelCurvedPicker {
             @Override
             public void onWheelScrollStateChanged(int state) {
             }
+
         });
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldW, int oldH) {
+        onWheelSelected(itemIndex, data.get(itemIndex));
+//        mTextPaint.setTextSize(26*2);
+        mDrawBound.set(getPaddingLeft(), getPaddingTop(), w - getPaddingRight(),
+                h - getPaddingBottom());
+
+        wheelCenterX = mDrawBound.centerX();
+        wheelCenterY = 50;
+        wheelCenterTextY = (int) (wheelCenterY - (mTextPaint.ascent() +
+                mTextPaint.descent()) / 2);
+
     }
 
     @Override
@@ -57,7 +88,7 @@ public class ReactWheelCurvedPicker extends WheelCurvedPicker {
         Paint paint = new Paint();
         paint.setColor(Color.WHITE);
         int colorFrom = 0x00FFFFFF;//Color.BLACK;
-        int colorTo = Color.WHITE;
+        int colorTo = Color.BLACK;
         LinearGradient linearGradientShader = new LinearGradient(rectCurItem.left, rectCurItem.top, rectCurItem.right/2, rectCurItem.top, colorFrom, colorTo, Shader.TileMode.MIRROR);
         paint.setShader(linearGradientShader);
         canvas.drawLine(rectCurItem.left, rectCurItem.top, rectCurItem.right, rectCurItem.top, paint);
@@ -68,7 +99,7 @@ public class ReactWheelCurvedPicker extends WheelCurvedPicker {
     public void setItemIndex(int index) {
         super.setItemIndex(index);
         unitDeltaTotal = 0;
-		mHandler.post(this);
+        mHandler.post(this);
     }
 
     public void setValueData(List<Integer> data) {
@@ -78,6 +109,8 @@ public class ReactWheelCurvedPicker extends WheelCurvedPicker {
     public int getState() {
         return state;
     }
+
+
 }
 
 class ItemSelectedEvent extends Event<ItemSelectedEvent> {
